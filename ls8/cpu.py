@@ -89,7 +89,7 @@ class CPU:
                 self.pc += 1
 
             elif instruction == PRN:
-                print(operand_a)
+                print(self.reg[operand_a])
                 self.pc += 2
 
             elif instruction == LDI:
