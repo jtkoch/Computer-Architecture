@@ -2,6 +2,14 @@
 
 import sys
 
+# filename = "Computer-Architecture/ls8/examples/mult.ls8"
+
+HLT = 0b00000001
+PRN = 0b01000111
+LDI = 0b10000010
+MUL = 0b10100010
+
+
 class CPU:
     """Main CPU class."""
 
@@ -12,27 +20,34 @@ class CPU:
         self.ram = [0] * 256
         self.running = True
 
+    if len(sys.argv) != 2:
+        print("usage: comp.py filename")
+        sys.exit(1)
+
     def load(self):
         """Load a program into memory."""
 
         address = 0
 
-        # For now, we've just hardcoded a program:
+        try: 
+            with open(filename) as f:
+                for line in f:
+                    split_line = line.spit('#')
+                    code_value = split_line[0].strip()
 
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
+                    if code_value == "":
+                        continue
 
-        for instruction in program:
-            self.ram[address] = instruction
-            address += 1
+                    num = int(code_value)
+                    self.ram[address] = num
+                    address += 1    
 
+        except FileNotFoundError:
+            print(f"Couldn't open {sys.argv[1]}")
+            sys.exit(2)
+
+        if address == 0:
+            print("Program was empty!")
 
     # new functions for read and write
     def ram_read(self, index): 
@@ -47,7 +62,12 @@ class CPU:
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
-        #elif op == "SUB": etc
+        elif op == "SUB":
+            self.reg[reg_a] -= self.reg[reg_b]
+        elif op == "MUL":
+            self.reg[reg_a] *= self.reg[reg_b]
+        elif op == "DIV":
+            self.reg[reg_a] /= self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -73,11 +93,6 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
-        
-        HLT = 0b00000001
-        PRN = 0b01000111
-        LDI = 0b10000010
-
 
         while self.running:
             instruction = self.ram_read(self.pc)
@@ -94,6 +109,11 @@ class CPU:
 
             elif instruction == LDI:
                 self.reg[operand_a] = operand_b
+                self.pc += 3
+
+            elif instruction == MUL:
+                print(self.reg[operand_a] * self.reg[operand_b])
+                self.reg[operand_a] *= self.reg[operand_b]
                 self.pc += 3
 
             else:
