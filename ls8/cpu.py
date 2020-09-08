@@ -2,12 +2,14 @@
 
 import sys
 
-# filename = "Computer-Architecture/ls8/examples/mult.ls8"
 
 HLT = 0b00000001
 PRN = 0b01000111
 LDI = 0b10000010
 MUL = 0b10100010
+SUB = 0b10100001
+ADD = 0b10100000
+DIV = 0b10100011
 
 
 class CPU:
@@ -20,25 +22,32 @@ class CPU:
         self.ram = [0] * 256
         self.running = True
 
-    if len(sys.argv) != 2:
-        print("usage: comp.py filename")
-        sys.exit(1)
+    # new functions for read and write
+    def ram_read(self, index): 
+        return self.reg[index]
+
+    def ram_write(self, index, value):
+        self.reg[index] = value
 
     def load(self):
         """Load a program into memory."""
 
         address = 0
 
+        if len(sys.argv) != 2:
+            print("usage: cpu.py filename")
+            sys.exit(1)
+
         try: 
-            with open(filename) as f:
+            with open(sys.argv[1]) as f:
                 for line in f:
-                    split_line = line.spit('#')
+                    split_line = line.split('#')
                     code_value = split_line[0].strip()
 
                     if code_value == "":
                         continue
 
-                    num = int(code_value)
+                    num = int(code_value, 2)
                     self.ram[address] = num
                     address += 1    
 
@@ -48,13 +57,6 @@ class CPU:
 
         if address == 0:
             print("Program was empty!")
-
-    # new functions for read and write
-    def ram_read(self, index): 
-        return self.ram[index]
-
-    def ram_write(self, index, value):
-        self.ram[index] = value
 
 
     def alu(self, op, reg_a, reg_b):
@@ -95,27 +97,26 @@ class CPU:
         """Run the CPU."""
 
         while self.running:
-            instruction = self.ram_read(self.pc)
-            operand_a = self.ram_read(self.pc + 1)
-            operand_b = self.ram_read(self.pc + 2)
+            instruction = self.pc
+            operand_a = self.ram[instruction + 1]
+            operand_b = self.ram[instruction + 2]
 
-            if instruction == HLT:
-                self.running = False
-                self.pc += 1
-
-            elif instruction == PRN:
-                print(self.reg[operand_a])
+            if self.ram[instruction] == LDI:
+                self.ram_write(operand_a, operand_b)
+                self.pc += 3
+            
+            elif self.ram[instruction] == PRN:
+                print(self.ram_read(operand_a))
                 self.pc += 2
 
-            elif instruction == LDI:
-                self.reg[operand_a] = operand_b
+            elif self.ram[instruction] == MUL:
+                self.alu('MUL', operand_a, operand_b)
                 self.pc += 3
 
-            elif instruction == MUL:
-                print(self.reg[operand_a] * self.reg[operand_b])
-                self.reg[operand_a] *= self.reg[operand_b]
-                self.pc += 3
+            elif self.ram[instruction] == HLT:
+                self.running = False
+                self.pc += 1    
 
             else:
-                self.running = False
                 print(f"Bad input: {instruction}")
+                self.running = False
