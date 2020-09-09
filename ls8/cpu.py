@@ -2,16 +2,6 @@
 
 import sys
 
-
-HLT = 0b00000001
-PRN = 0b01000111
-LDI = 0b10000010
-MUL = 0b10100010
-SUB = 0b10100001
-ADD = 0b10100000
-DIV = 0b10100011
-
-
 class CPU:
     """Main CPU class."""
 
@@ -19,8 +9,15 @@ class CPU:
         """Construct a new CPU."""
         self.pc = 0
         self.reg = [0] * 8
+        self.sp = self.reg[6]
         self.ram = [0] * 256
         self.running = True
+        self.branch_table = {}
+        self.branch_table[0b01000111] = self.PRN
+        self.branch_table[0b10000010] = self.LDI
+        self.branch_table[0b10100010] = self.MUL
+        self.branch_table[0b01000110] = self.POP
+        self.branch_table[0b01000101] = self.PUSH
 
     # new functions for read and write
     def ram_read(self, index): 
@@ -28,6 +25,37 @@ class CPU:
 
     def ram_write(self, index, value):
         self.reg[index] = value
+
+
+    # cleaned up while loop to be functions
+    def LDI(self):
+        operand_a = self.ram[self.pc + 1]
+        operand_b = self.ram[self.pc + 2]
+        self.reg[operand_a] = operand_b
+        self.pc += 3  
+
+    def PRN(self):
+        operand_a = self.ram[self.pc + 1]
+        print(self.reg[operand_a])
+        self.pc += 2
+
+    def MUL(self):
+        operand_a = self.ram[self.pc + 1]
+        operand_b = self.ram[self.pc + 2]
+        self.alu('MUL', operand_a, operand_b)
+        self.pc += 3
+
+    def PUSH(self):
+        operand_a = self.ram[self.pc + 1]
+        self.sp -= 1
+        self.ram[self.sp] = self.reg[operand_a]
+        self.pc += 2
+
+    def POP(self):
+        operand_a = self.ram[self.pc + 1]
+        self.reg[operand_a] = self.ram[self.sp]
+        self.sp += 1
+        self.pc += 2
 
     def load(self):
         """Load a program into memory."""
@@ -96,27 +124,9 @@ class CPU:
     def run(self):
         """Run the CPU."""
 
-        while self.running:
-            instruction = self.pc
-            operand_a = self.ram[instruction + 1]
-            operand_b = self.ram[instruction + 2]
-
-            if self.ram[instruction] == LDI:
-                self.ram_write(operand_a, operand_b)
-                self.pc += 3
-            
-            elif self.ram[instruction] == PRN:
-                print(self.ram_read(operand_a))
-                self.pc += 2
-
-            elif self.ram[instruction] == MUL:
-                self.alu('MUL', operand_a, operand_b)
-                self.pc += 3
-
-            elif self.ram[instruction] == HLT:
+        while self.running: 
+            if self.ram[self.pc] == 0b00000001: # HLT
                 self.running = False
-                self.pc += 1    
 
-            else:
-                print(f"Bad input: {instruction}")
-                self.running = False
+            else: 
+                self.branch_table[self.ram[self.pc]]()
