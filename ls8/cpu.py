@@ -11,6 +11,7 @@ class CPU:
         self.reg = [0] * 8
         self.sp = self.reg[6]
         self.ram = [0] * 256
+        self.flag = 0b00000000
         self.running = True
         self.branch_table = {
             0b01000111: self.PRN,
@@ -20,7 +21,8 @@ class CPU:
             0b01000110: self.POP,
             0b01000101: self.PUSH,
             0b01010000: self.CALL,
-            0b00010001: self.RET
+            0b00010001: self.RET,
+            0b10100111: self.CMP
         }
         
     # new functions for read and write
@@ -74,6 +76,9 @@ class CPU:
     def RET(self):
         self.pc = self.ram[self.reg[self.sp]]
         self.reg[self.sp] += 1    
+
+    def CMP(self):
+        
 
 
     def load(self):
