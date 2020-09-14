@@ -7,28 +7,140 @@ class CPU:
 
     def __init__(self):
         """Construct a new CPU."""
-        pass
+        self.pc = 0
+        self.reg = [0] * 8
+        self.sp = self.reg[6]
+        self.ram = [0] * 256
+        self.flag = 0b00000000
+        self.running = True
+        self.branch_table = {
+            0b01000111: self.PRN,
+            0b10000010: self.LDI,
+            0b00000001: self.HLT,
+            0b10100010: self.MUL,
+            0b01000110: self.POP,
+            0b01000101: self.PUSH,
+            0b01010000: self.CALL,
+            0b00010001: self.RET,
+            0b10100111: self.CMP,
+            0b01010100: self.JMP,
+            0b01010101: self.JEQ,
+            0b01010110: self.JNE
+        }
+        
+    # new functions for read and write
+    def ram_read(self, index): 
+        return self.reg[index]
+
+    def ram_write(self, index, value):
+        self.reg[index] = value
+
+
+    # cleaned up while loop to be functions
+    def LDI(self):
+        operand_a = self.ram[self.pc + 1]
+        operand_b = self.ram[self.pc + 2]
+        self.reg[operand_a] = operand_b
+        self.pc += 3  
+
+    def PRN(self):
+        operand_a = self.ram[self.pc + 1]
+        print(self.reg[operand_a])
+        self.pc += 2
+
+    def HLT(self):
+        self.running = False 
+
+    def MUL(self):
+        operand_a = self.ram[self.pc + 1]
+        operand_b = self.ram[self.pc + 2]
+        self.alu('MUL', operand_a, operand_b)
+        self.pc += 3
+
+    def PUSH(self):
+        operand_a = self.ram[self.pc + 1]
+        self.sp -= 1
+        self.ram[self.sp] = self.reg[operand_a]
+        self.pc += 2
+
+    def POP(self):
+        operand_a = self.ram[self.pc + 1]
+        self.reg[operand_a] = self.ram[self.sp]
+        self.sp += 1
+        self.pc += 2
+
+    def CALL(self):
+        return_address = self.pc + 2
+        self.reg[self.sp] -= 1
+        self.ram[self.reg[self.sp]] = return_address
+        register = self.ram[self.pc + 1]
+        self.pc = self.reg[register]
+
+    def RET(self):
+        self.pc = self.ram[self.reg[self.sp]]
+        self.reg[self.sp] += 1    
+
+    def CMP(self):
+        # This compares the values in the two registers
+        operand_a = self.ram[self.pc + 1]
+        operand_b = self.ram[self.pc + 2]
+        self.alu('CMP', operand_a, operand_b)
+        self.pc += 3
+
+    def JMP(self):
+        # This jumps to the address stored in the register
+        register = self.ram[self.pc + 1]
+        # This will set the PC to the address in the given register
+        self.pc = self.reg[register]
+
+    def JEQ(self):
+        # If equal flag is set (true), 
+        # jump to the address stored in the given register
+        register = self.ram[self.pc + 1]
+        if self.flag & 0b00000001 == 1:
+            self.pc = self.reg[register]
+        else:
+            self.pc += 2
+
+    def JNE(self):
+        # If E flag is clear (false, 0), 
+        # jump to the address stored in the given register
+        register = self.ram[self.pc + 1]
+        if self.flag & 0b00000001 == 0:
+            self.pc = self.reg[register]
+        else:
+            self.pc += 2
+
+
 
     def load(self):
         """Load a program into memory."""
 
         address = 0
 
-        # For now, we've just hardcoded a program:
+        if len(sys.argv) != 2:
+            print("usage: cpu.py filename")
+            sys.exit(1)
 
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
+        try: 
+            with open(sys.argv[1]) as f:
+                for line in f:
+                    split_line = line.split('#')
+                    code_value = split_line[0].strip()
 
-        for instruction in program:
-            self.ram[address] = instruction
-            address += 1
+                    if code_value == "":
+                        continue
+
+                    num = int(code_value, 2)
+                    self.ram[address] = num
+                    address += 1    
+
+        except FileNotFoundError:
+            print(f"Couldn't open {sys.argv[1]}")
+            sys.exit(2)
+
+        if address == 0:
+            print("Program was empty!")
 
 
     def alu(self, op, reg_a, reg_b):
@@ -36,7 +148,22 @@ class CPU:
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
-        #elif op == "SUB": etc
+        elif op == "SUB":
+            self.reg[reg_a] -= self.reg[reg_b]
+        elif op == "MUL":
+            self.reg[reg_a] *= self.reg[reg_b]
+        elif op == "DIV":
+            self.reg[reg_a] /= self.reg[reg_b]
+        elif op == "CMP":
+            if self.reg[reg_a] == self.reg[reg_b]:
+                # set the E flag to 1
+                self.flag = 0b00000001
+            elif self.reg[reg_a] < self.reg[reg_b]:
+                # set the L flag to 1
+                self.flag = 0b00000100
+            elif self.reg[reg_a] > self.reg[reg_b]:
+                # set the G flag to 1
+                self.flag = 0b00000010
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -62,4 +189,13 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
-        pass
+
+        while self.running: 
+            instruction = self.ram[self.pc]
+
+            if instruction in self.branch_table:
+                self.branch_table[instruction]()
+
+            else:
+                print(f"Bad input: {instruction}")
+                self.running = False
