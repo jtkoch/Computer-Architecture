@@ -22,7 +22,10 @@ class CPU:
             0b01000101: self.PUSH,
             0b01010000: self.CALL,
             0b00010001: self.RET,
-            0b10100111: self.CMP
+            0b10100111: self.CMP,
+            0b01010100: self.JMP,
+            0b01010101: self.JEQ,
+            0b01010110: self.JNE
         }
         
     # new functions for read and write
@@ -83,6 +86,30 @@ class CPU:
         operand_b = self.ram[self.pc + 2]
         self.alu('CMP', operand_a, operand_b)
         self.pc += 3
+
+    def JMP(self):
+        # This jumps to the address stored in the register
+        register = self.ram[self.pc + 1]
+        # This will set the PC to the address in the given register
+        self.pc = self.reg[register]
+
+    def JEQ(self):
+        # If equal flag is set (true), 
+        # jump to the address stored in the given register
+        register = self.ram[self.pc + 1]
+        if self.flag & 0b00000001 == 1:
+            self.pc = self.reg[register]
+        else:
+            self.pc += 2
+
+    def JNE(self):
+        # If E flag is clear (false, 0), 
+        # jump to the address stored in the given register
+        register = self.ram[self.pc + 1]
+        if self.flag & 0b00000001 == 0:
+            self.pc = self.reg[register]
+        else:
+            self.pc += 2
 
 
 
