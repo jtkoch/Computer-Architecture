@@ -78,7 +78,12 @@ class CPU:
         self.reg[self.sp] += 1    
 
     def CMP(self):
-        
+        # This compares the values in the two registers
+        operand_a = self.ram[self.pc + 1]
+        operand_b = self.ram[self.pc + 2]
+        self.alu('CMP', operand_a, operand_b)
+        self.pc += 3
+
 
 
     def load(self):
@@ -122,6 +127,16 @@ class CPU:
             self.reg[reg_a] *= self.reg[reg_b]
         elif op == "DIV":
             self.reg[reg_a] /= self.reg[reg_b]
+        elif op == "CMP":
+            if self.reg[reg_a] == self.reg[reg_b]:
+                # set the E flag to 1
+                self.flag = 0b00000001
+            elif self.reg[reg_a] < self.reg[reg_b]:
+                # set the L flag to 1
+                self.flag = 0b00000100
+            elif self.reg[reg_a] > self.reg[reg_b]:
+                # set the G flag to 1
+                self.flag = 0b00000010
         else:
             raise Exception("Unsupported ALU operation")
 
